@@ -24,16 +24,20 @@ import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.math.BigInteger;
+import java.security.MessageDigest;
 
 public class MainActivity extends AppCompatActivity {
 
     private static final String TAG = "MainActivity";
     private static final int PROG = 1;
     private static final int OK = 2;
-    public String jsonContent="{appkey: xxxxxxxxxx,old_md5: xxxxxxxxxxxxxxxxx,version_code:1}";//模拟json数据
+    public String jsonContent="{appkey: xxxxxxxxxx,old_md5: 74629424208c92c8e8164c8b166635f0,version_code:1}";//模拟json数据
+    public File apkFile;
     Handler han = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -44,13 +48,14 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 case OK:
                     tv_hello.setText("下载完成");
-                    installApk(file);
+                    installApk(apkFile);
                     break;
             }
         }
     };
     private TextView tv_hello;
     private File file;
+    private VersionBean versionBean;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -59,14 +64,28 @@ public class MainActivity extends AppCompatActivity {
         tv_hello = (TextView)findViewById(R.id.hahaha);
         if(isWifiState(MainActivity.this)){
             //调用版本检测的接口
-            VersionBean versionBean = new Gson().fromJson(
+             versionBean = new Gson().fromJson(
                     jsonContent, VersionBean.class);
+
             Log.d(TAG,versionBean.toString());
             if(true) {
+
                 showDialog();
             }
 
         }
+    }
+    //用于判断服务器的文件和本地文件是否相同
+    private boolean checkMd5isEqual(String old_md5, File apkFile) {
+        return old_md5.equals(getFileMD5(apkFile));
+    }
+
+    private File getApkFile() {
+        File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES) + "/download");
+        if (!file.exists()) file.mkdirs();
+        File apk1File = new File(file, "haha.apk");
+        Log.d(TAG,"得到的apk路径为:"+apk1File.getAbsolutePath());
+        return apk1File;
     }
 
 
@@ -93,7 +112,41 @@ public class MainActivity extends AppCompatActivity {
         builer.setPositiveButton("确定", new DialogInterface.OnClickListener() {
             public void onClick(DialogInterface dialog, int which) {
                 Log.i(TAG,"下载apk,更新");
-                downLoadApk();
+
+
+
+
+                apkFile = getApkFile();
+                if(apkFile.exists()){
+                    //文件存在
+                    if (checkMd5isEqual(versionBean.old_md5,apkFile)){
+                        Log.d(TAG,"md5值 相同,直接安装");
+                        installApk(apkFile);
+                    }else{
+                        Log.d(TAG,"md5值不同,删除旧文件,重新安装");
+                        //文件存在
+                        apkFile.delete();//删除文件
+                        //重新下载
+                        downLoadApk();
+                    }
+                }else{
+                    //文件不存在,下载
+                    downLoadApk();
+
+                }
+
+
+
+
+
+
+
+
+
+
+
+
+
             }
         });
         //当点取消按钮时进行登录
@@ -127,6 +180,7 @@ public class MainActivity extends AppCompatActivity {
     }
     //开始安装apk
     protected void installApk(File file) {
+        Log.e(TAG,"安装时候的路径:"+file.getAbsolutePath());
         Intent intent = new Intent();
         //执行动作
         intent.setAction(Intent.ACTION_VIEW);
@@ -145,10 +199,8 @@ public class MainActivity extends AppCompatActivity {
             final long total = response.body().contentLength();
             Log.i("TAG", "total--" + total);
             long sum = 0;
-            File dir = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES) + "/download");
-            if (!dir.exists()) dir.mkdirs();
-             file = new File(dir, "haha.apk");
-            fos = new FileOutputStream(file);
+
+            fos = new FileOutputStream(apkFile);
             while ((len = is.read(buf)) != -1) {
                 sum += len;
                 fos.write(buf, 0, len);
@@ -156,7 +208,7 @@ public class MainActivity extends AppCompatActivity {
                 han.obtainMessage(PROG, String.valueOf(finalSum * 1.0f / total)).sendToTarget();
             }
             fos.flush();
-            return file;
+            return apkFile;
         } finally {
             try {
                 if (is != null) is.close();
@@ -168,4 +220,40 @@ public class MainActivity extends AppCompatActivity {
             }
         }
     }
+
+
+
+
+    /**
+     * 获取单个文件的MD5值！
+
+     * @param file
+     * @return
+     */
+
+    public static String getFileMD5(File file) {
+        if (!file.isFile()) {
+            return null;
+        }
+        MessageDigest digest = null;
+        FileInputStream in = null;
+        byte buffer[] = new byte[1024];
+        int len;
+        try {
+            digest = MessageDigest.getInstance("MD5");
+            in = new FileInputStream(file);
+            while ((len = in.read(buffer, 0, 1024)) != -1) {
+                digest.update(buffer, 0, len);
+            }
+            in.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+        BigInteger bigInt = new BigInteger(1, digest.digest());
+        return bigInt.toString(16);
+    }
+
+
+
 }
