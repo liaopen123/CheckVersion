@@ -1,8 +1,10 @@
 package com.example.liaopenghui.checkversion;
 
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
@@ -43,6 +45,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+        //先注册广播  做好这边接受service发了的广播
+         BroadcastReceiver receiver = new BroadcastReceiver() {
+            public void onReceive(Context context, Intent intent) {
+                TextView tv = (TextView) findViewById(R.id.hahaha);
+                tv.setText("发送过来的内容："+intent.getExtras().getString("i"));
+            }
+        };
+        IntentFilter filter = new IntentFilter("com.gdp2852.demo.service.broadcast");
+        registerReceiver(receiver, filter);
         if(isWifiState(MainActivity.this)){
             //调用版本检测的接口
              versionBean = new Gson().fromJson(

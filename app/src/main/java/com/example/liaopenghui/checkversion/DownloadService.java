@@ -7,6 +7,7 @@ import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
 import android.net.Uri;
+import android.os.Binder;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
@@ -30,6 +31,7 @@ public class DownloadService extends IntentService {
     private NotificationCompat.Builder mBuilder;
     private String apkFile;
     private String downloadURL;
+    private Intent broadCast;
 
     public DownloadService() {
         super("DownloadService");
@@ -37,19 +39,17 @@ public class DownloadService extends IntentService {
 
     @Override
     protected void onHandleIntent(Intent intent) {
-         apkFile = intent.getStringExtra("path");
+        apkFile = intent.getStringExtra("path");
         downloadURL = intent.getStringExtra("url");
-        Log.d(TAG,"服务得到的URL:"+downloadURL);
-         notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        Log.d(TAG, "服务得到的URL:" + downloadURL);
+        notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         mBuilder = new NotificationCompat.Builder(this);
         mBuilder.setContentTitle("正在下载新版本").setSmallIcon(R.mipmap.ic_launcher);
+
+        //广播初始化
         downLoadApk();
 
     }
-
-
-
-
 
 
     //访问网络下载apk
@@ -79,10 +79,11 @@ public class DownloadService extends IntentService {
 
         });
     }
+
     //下载apk
     //开始安装apk
     protected void installApk(File file) {
-        Log.e(TAG,"安装时候的路径:"+file.getAbsolutePath());
+        Log.e(TAG, "安装时候的路径:" + file.getAbsolutePath());
         Intent intent = new Intent();
         //执行动作
         intent.setAction(Intent.ACTION_VIEW);
@@ -110,9 +111,12 @@ public class DownloadService extends IntentService {
                 fos.write(buf, 0, len);
                 final long finalSum = sum;
 //                han.obtainMessage(PROG, String.valueOf((int)(finalSum *100/ total))).sendToTarget();
-                int progress = (int)(finalSum *100/ total);
+                int progress = (int) (finalSum * 100 / total);
                 if (progress != oldProgress) {
                     if (total != -1) {
+                        broadCast = new Intent("com.gdp2852.demo.service.broadcast");
+                        broadCast.putExtra("i", ""+progress);
+                        sendBroadcast(broadCast);
                         updateProgress(progress, false);
                     } else {
                         updateProgress(progress, true);
@@ -135,7 +139,7 @@ public class DownloadService extends IntentService {
     }
 
 
-        //更新进度条
+    //更新进度条
     private void updateProgress(int progress, boolean i) {
         if (i == false) {
             //如果获取不到文件大小，则不使用百分比进度条
