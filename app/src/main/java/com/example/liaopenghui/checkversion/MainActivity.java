@@ -40,13 +40,14 @@ public class MainActivity extends AppCompatActivity {
     private static final int OK = 2;
     public String jsonContent="{appkey: xxxxxxxxxx,old_md5: 74629424208c92c8e8164c8b166635f0,version_code:1}";//模拟json数据
     private VersionBean versionBean;
+    private BroadcastReceiver receiver;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         //先注册广播  做好这边接受service发了的广播
-         BroadcastReceiver receiver = new BroadcastReceiver() {
+          receiver = new BroadcastReceiver() {
             public void onReceive(Context context, Intent intent) {
                 TextView tv = (TextView) findViewById(R.id.hahaha);
                 tv.setText("发送过来的内容："+intent.getExtras().getString("i"));
@@ -104,4 +105,10 @@ public class MainActivity extends AppCompatActivity {
         dialog.show();
     }
 
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        unregisterReceiver(receiver);
+    }
 }
